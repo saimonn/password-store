@@ -6,6 +6,11 @@
 umask "${PASSWORD_STORE_UMASK:-077}"
 set -o pipefail
 
+TREE=$(which tree)
+if [ -n "$TREE" ];then
+  TREE_VER=$(tree --version | awk '{print $2}')
+fi
+
 GPG_OPTS=( "--quiet" "--yes" "--compress-algo=none" "--no-encrypt-to" )
 GPG="gpg"
 export GPG_TTY="${GPG_TTY:-$(tty 2>/dev/null)}"
@@ -334,7 +339,15 @@ cmd_find() {
 	[[ -z "$@" ]] && die "Usage: $PROGRAM $COMMAND pass-names..."
 	IFS="," eval 'echo "Search Terms: $*"'
 	local terms="*$(printf '%s*|*' "$@")"
-	tree -C -l --noreport -P "${terms%|*}" --prune --matchdirs --ignore-case "$PREFIX" | tail -n +2 | sed 's/\.gpg\(\x1B\[[0-9]\+m\)\{0,1\}\( ->\|$\)/\1\2/g'
+	case "$TREE_VER" in
+		v1.[0-6].*)
+			TREE_OPTS=""
+			;;
+		*)
+			TREE_OPTS="--matchdirs --ignore-case"
+			;;
+	esac
+	tree -C -l --noreport -P "${terms%|*}" --prune ${TREE_OPTS} "$PREFIX" | tail -n +2 | sed 's/\.gpg\(\x1B\[[0-9]\+m\)\{0,1\}\( ->\|$\)/\1\2/g'
 }
 
 cmd_grep() {
